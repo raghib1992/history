@@ -21,3 +21,46 @@ Access the URL:
 https://www.google.com/settings/security/lesssecureapps
 Turn "Allow less secure apps: OFF" to "Allow less secure apps: ON"
 ```
+
+#### Update timezone in Jenkins build
+[Referred: Jenkins doc](https://www.jenkins.io/doc/book/managing/change-system-timezone/) 
+```bash
+# Run below in Jenkins script console:
+System.setProperty('org.apache.commons.jelly.tags.fmt.timeZone', 'America/New_York')
+```
+
+#### Slack notification in Jenkins pipeline
+Add below snippet in Jenkins pipeline
+```groovy
+    post {
+        always {
+            slackSend channel: 'jenkins', color: COLOR_MAP[currentBuild.currentResult], message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} by ${BUILD_USER}\\n More info at: ${env.BUILD_URL}"
+        }
+    }
+```
+
+#### Copy ssh key into the docker container in Jenkins pipeline
+[Referred doc](https://stackoverflow.com/questions/49460520/how-to-copy-jenkins-secret-files)
+```groovy            
+            script {
+                    dir('projDir') {
+                        withCredentials([file(credentialsId: '00000-0000-000-000-000000', variable: 'myprivatekey')]) {
+                        writeFile file: 'private.pem', text: readFile(myprivatekey)
+                        sh """
+                            docker build -t ${params.ecrRepo}/${params.env}/${params.service}:${commitId} .
+                        """
+                        }
+                    }
+                }
+
+
+# Inside dockerfile either use COPY or ADD
+FROM python:3.9
+RUN mkdir -p /root/.ssh && \
+    chmod 0700 /root/.ssh && \
+    ssh-keyscan github.com > /root/.ssh/known_hosts
+
+ADD private.pem /root/.ssh/id_rsa
+RUN chmod 600 /root/.ssh/id_rsa
+```
+
